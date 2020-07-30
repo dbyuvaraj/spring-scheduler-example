@@ -1,13 +1,13 @@
 package com.dbyuvaraj.springboot.scheduler;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.fluent.Content;
-import org.apache.http.client.fluent.Request;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -23,19 +23,24 @@ public class APIScheduler {
         add("https://cat-fact.herokuapp.com/facts/599f87db9a11040c4a16343f");
     }};
 
+    private final RestTemplate restTemplate;
+
+    public APIScheduler(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
     @Scheduled(fixedDelay = 10000)
     public void callApi() {
         log.info("Scheduler started");
         API_LIST.forEach(api ->
                 CompletableFuture.runAsync(() -> {
-                    try {
-                        log.info("Calling api {}", api);
-                        Content content = Request.Get(api).execute().returnContent();
-                        log.info("The response from API {}", api);
-                        String responseString = content.asString();
+                    log.info("Calling api {}", api);
+                    ResponseEntity<String> responseEntity
+                            = restTemplate.getForEntity(api, String.class, new HashMap<>());
+                    log.info("The response from API {}", api);
+                    String responseString = responseEntity.getBody();
+                    if (responseString != null) {
                         log.info(responseString.substring(0, 100));
-                    } catch (IOException e) {
-                        log.error("Error while processing the api {}", api, e);
                     }
                 })
         );
